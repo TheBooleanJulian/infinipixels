@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Infinipixels: paint a million pixels together, live</title>
+<meta name="description" content="1,000,000 pixels. One canvas. Everyone paints live.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://infinipixels.thebooleanjulian.dev/">
+<meta property="og:title" content="Infinipixels: paint a million pixels together, live">
+<meta property="og:description" content="1,000,000 pixels. One canvas. Everyone paints live.">
+<meta property="og:image" content="https://infinipixels.thebooleanjulian.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Infinipixels: paint a million pixels together, live">
+<meta name="twitter:description" content="1,000,000 pixels. One canvas. Everyone paints live.">
+<meta name="twitter:image" content="https://infinipixels.thebooleanjulian.dev/og.png">
+<meta name="theme-color" content="#05060d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 4'%3E%3Crect width='2' height='2' fill='%2300e5ff'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23ff2bd6'/%3E%3Crect x='2' width='2' height='2' fill='%2305060d'/%3E%3Crect y='2' width='2' height='2' fill='%2305060d'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Julian Unified UI tokens (subset of tbj-brand dist/tokens.css) */
+:root {
+  color-scheme: dark;
+  --font-display: "Chakra Petch", "Rajdhani", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  --radius-sm: 2px; --radius-md: 6px; --radius-lg: 10px; --radius-pill: 999px;
+  --dur-fast: 120ms; --dur-base: 200ms; --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --bg: #05060d; --surface: #0b0e1a; --surface-raised: #121629; --surface-overlay: #1a2040;
+  --scrim: rgba(2, 3, 8, 0.72); --line: #262d52; --line-strong: #6370b6;
+  --ink: #e8ecff; --ink-muted: #9ca5d4; --ink-faint: #8089bd;
+  --cyan: #00e5ff; --magenta: #ff2bd6; --cyan-ink: #19e6ff; --magenta-ink: #ff6be2;
+  --cyan-tint: rgba(0, 229, 255, 0.10); --on-accent: #02101a;
+  --danger: #ff6482; --warning: #ffc233;
+  --glow-cyan: 0 0 0 1px rgba(0, 229, 255, 0.55), 0 0 18px rgba(0, 229, 255, 0.30);
+  --elevation: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --signal: linear-gradient(90deg, var(--cyan), var(--magenta));
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 400 14px/20px var(--font-sans);
+  -webkit-font-smoothing: antialiased; overflow: hidden; overscroll-behavior: none;
+  display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; }
+a { color: var(--cyan-ink); }
+
+/* top bar */
+header {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  height: 52px; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  padding-top: env(safe-area-inset-top); background: var(--surface); flex: none; z-index: 5;
+}
+header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--line); }
+#prog { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: var(--signal); z-index: 1; transition: width var(--dur-base) var(--ease-out); }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 15px/1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
+.brand i { width: 14px; height: 14px; background: var(--signal); border-radius: var(--radius-sm); flex: none; }
+.live { display: flex; align-items: center; gap: 8px; font: 500 12px/1 var(--font-mono); color: var(--ink-muted); white-space: nowrap; }
+.live b { color: var(--ink); font-weight: 500; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--magenta); box-shadow: 0 0 10px var(--magenta); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+.spacer { flex: 1; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: transparent; color: var(--ink);
+  font: 600 11px/1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; text-decoration: none;
+  transition: box-shadow var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.btn:hover, .btn:focus-visible { border-color: var(--cyan-ink); box-shadow: var(--glow-cyan); outline: none; }
+.btn--primary { background: var(--cyan); border-color: var(--cyan); color: var(--on-accent); }
+.vote-top { color: var(--cyan-ink); }
+@media (max-width: 560px) { .vote-top { display: none; } .brand span.long { display: none; } }
+
+/* canvas viewport */
+#vp { position: relative; flex: 1; overflow: hidden; touch-action: none; cursor: crosshair; background:
+  radial-gradient(circle at 50% 40%, var(--surface-raised), var(--bg) 70%); }
+#world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+#cv { display: block; width: 1000px; height: 1000px; image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 1px var(--line-strong), var(--elevation); }
+#hover { position: absolute; pointer-events: none; display: none; outline: 1px solid var(--ink); box-shadow: 0 0 0 1px var(--bg); opacity: .85; }
+.cur { position: absolute; pointer-events: none; font-size: 18px; line-height: 1; transform: translate(-50%, -100%); transition: left 100ms linear, top 100ms linear; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+#coords { position: absolute; left: 12px; bottom: 12px; padding: 4px 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); font: 500 12px/16px var(--font-mono); color: var(--ink-muted); pointer-events: none; }
+#zoom { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; }
+#zoom .btn { width: 40px; height: 40px; padding: 0; font-size: 18px; background: var(--surface); }
+
+/* palette */
+footer { flex: none; background: var(--surface); border-top: 1px solid var(--line); padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); z-index: 5; }
+.pal-wrap { max-width: 760px; margin: 0 auto; }
+#cd { display: flex; align-items: center; gap: 10px; height: 18px; margin-bottom: 8px; font: 500 12px/1 var(--font-mono); color: var(--ink-muted); }
+#cd .bar { flex: 1; height: 4px; background: var(--surface-overlay); border-radius: var(--radius-pill); overflow: hidden; }
+#cd .bar i { display: block; height: 100%; width: 100%; background: var(--signal); transform-origin: 0 50%; }
+#cd.ready .bar i { background: var(--cyan); }
+#cd.ready #cdText { color: var(--cyan-ink); }
+#pal { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+@media (min-width: 720px) { #pal { grid-template-columns: repeat(16, 1fr); } }
+.sw { height: 44px; border-radius: var(--radius-md); border: 1px solid var(--line); cursor: pointer; padding: 0; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+.sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--cyan); transform: translateY(-2px); }
+.cooling .sw { opacity: .45; }
+
+/* drawer */
+#scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 20; display: none; }
+#drawer {
+  position: fixed; z-index: 21; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--elevation);
+  right: 0; top: 0; bottom: 0; width: min(360px, 100vw); padding: calc(16px + env(safe-area-inset-top)) 16px 16px;
+  transform: translateX(105%); transition: transform var(--dur-base) var(--ease-out); display: flex; flex-direction: column; gap: 16px;
+}
+body.open #drawer { transform: none; }
+body.open #scrim { display: block; }
+#drawer h2 { margin: 0; font: 700 13px/1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); }
+.row { display: flex; gap: 8px; }
+.input { flex: 1; min-width: 0; height: 40px; padding: 0 12px; background: var(--bg); color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--radius-md); font: 400 15px/20px var(--font-sans); }
+.input:focus { outline: none; border-color: var(--cyan-ink); box-shadow: var(--glow-cyan); }
+#lb { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; overflow: auto; }
+#lb li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface-raised); border-radius: var(--radius-md); }
+#lb .rk { font: 500 12px/1 var(--font-mono); color: var(--ink-faint); }
+#lb .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#lb .ct { font: 500 13px/1 var(--font-mono); color: var(--cyan-ink); }
+.muted { color: var(--ink-muted); font-size: 13px; }
+.drawer-foot { margin-top: auto; }
+
+/* toast */
+#toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 30;
+  background: var(--surface-overlay); border: 1px solid var(--line-strong); border-radius: var(--radius-md); padding: 10px 14px; box-shadow: var(--elevation);
+  max-width: calc(100vw - 32px); transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
+#toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+#toast.err { border-color: var(--danger); }
+@media (min-width: 720px) { #toast { bottom: 110px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><i></i>Infinipixels</div>
+  <div class="live"><span class="dot"></span><span><b id="count">1</b> painting now</span></div>
+  <div class="spacer"></div>
+  <a class="btn vote-top" href="https://supaclaude.vercel.app/" target="_blank" rel="noopener">Vote ↗</a>
+  <button class="btn" id="lbBtn" aria-label="Leaderboard and name">🏆</button>
+  <div id="prog"></div>
+</header>
+
+<main id="vp">
+  <div id="world"><canvas id="cv" width="1000" height="1000"></canvas></div>
+  <div id="hover"></div>
+  <div id="cursors"></div>
+  <div id="coords">—</div>
+  <div id="zoom"><button class="btn" id="zin" aria-label="Zoom in">+</button><button class="btn" id="zout" aria-label="Zoom out">−</button></div>
+</main>
+
+<footer>
+  <div class="pal-wrap">
+    <div id="cd" class="ready"><span id="cdText">Ready to paint</span><div class="bar"><i id="cdBar"></i></div></div>
+    <div id="pal" role="toolbar" aria-label="Colours"></div>
+  </div>
+</footer>
+
+<div id="scrim"></div>
+<aside id="drawer" aria-label="Leaderboard">
+  <h2>Your name</h2>
+  <form class="row" id="nameForm"><input class="input" id="nameIn" maxlength="24" autocomplete="off"><button class="btn btn--primary">Save</button></form>
+  <h2>Top painters</h2>
+  <ol id="lb"><li class="muted">Loading…</li></ol>
+  <div class="drawer-foot">
+    <p class="muted">Enjoying this? <a href="https://supaclaude.vercel.app/" target="_blank" rel="noopener">Vote for Infinipixels on the board ↗</a></p>
+    <button class="btn" id="closeBtn">Close</button>
+  </div>
+</aside>
+<div id="toast" role="status"></div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
+
+const N = 1000, T = 100, COOLDOWN = 3000, MAX_S = 40;
+// r/place 2017 palette; must match tools/gen_seed.py
+const PAL = ["#FFFFFF","#E4E4E4","#888888","#222222","#FFA7D1","#E50000","#E59500","#A06A42",
+             "#E5D900","#94E044","#02BE01","#00D3DD","#0083C7","#0000EA","#CF6EE4","#820080"];
+const RGB = PAL.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)));
+const EMOJI = ["🦊","🐙","🐸","🐼","🦄","🐝","🐳","🦖","🐧","🦉","🐢","🦋","👾","🤖","🌵","🍄"];
+
+const $ = id => document.getElementById(id);
+const vp = $("vp"), world = $("world"), cv = $("cv"), ctx = cv.getContext("2d");
+const pix = new Uint8Array(N * N);
+
+// ---------- toast
+let toastTimer;
+function toast(html, ms = 2200, err = false) {
+  const t = $("toast");
+  t.innerHTML = html; t.classList.toggle("err", err); t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), ms);
+}
+
+// ---------- pixels
+ctx.fillStyle = PAL[0]; ctx.fillRect(0, 0, N, N);
+function setPix(x, y, c) {
+  pix[y * N + x] = c;
+  ctx.fillStyle = PAL[c]; ctx.fillRect(x, y, 1, 1);
+}
+function drawTile(tx, ty, b64) {
+  const bin = atob(b64), img = ctx.createImageData(T, T), d = img.data;
+  for (let i = 0; i < T * T; i++) {
+    const c = bin.charCodeAt(i) & 15, rgb = RGB[c], o = i * 4;
+    d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2]; d[o + 3] = 255;
+    pix[(ty * T + ((i / T) | 0)) * N + tx * T + (i % T)] = c;
+  }
+  ctx.putImageData(img, tx * T, ty * T);
+}
+
+// ---------- view (pan / zoom)
+let s = 1, vx = 0, vy = 0, minS = 0.1;
+function vpSize() { return [vp.clientWidth, vp.clientHeight]; }
+function clampView() {
+  const [w, h] = vpSize(), cw = N * s;
+  vx = cw <= w ? (w - cw) / 2 : Math.min(0, Math.max(w - cw, vx));
+  vy = cw <= h ? (h - cw) / 2 : Math.min(0, Math.max(h - cw, vy));
+}
+function apply() {
+  world.style.transform = `translate(${vx}px,${vy}px) scale(${s})`;
+  renderCursors(); renderHover();
+}
+function fit() {
+  const [w, h] = vpSize();
+  minS = Math.min(w, h) / N; s = minS; clampView(); apply();
+}
+function zoomAt(px, py, ns) {
+  ns = Math.min(MAX_S, Math.max(minS, ns));
+  const wx = (px - vx) / s, wy = (py - vy) / s;
+  s = ns; vx = px - wx * s; vy = py - wy * s; clampView(); apply();
+}
+function centerOn(cx, cy, ns) {
+  const [w, h] = vpSize();
+  s = Math.min(MAX_S, Math.max(minS, ns)); vx = w / 2 - (cx + 0.5) * s; vy = h / 2 - (cy + 0.5) * s; clampView(); apply();
+}
+function cellAt(e) {
+  const r = vp.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left - vx) / s), y = Math.floor((e.clientY - r.top - vy) / s);
+  return x >= 0 && y >= 0 && x < N && y < N ? [x, y] : null;
+}
+window.addEventListener("resize", () => {
+  const atFit = s <= minS * 1.001;
+  const [w, h] = vpSize(); minS = Math.min(w, h) / N;
+  if (atFit) fit(); else { s = Math.max(s, minS); clampView(); apply(); }
+});
+vp.addEventListener("wheel", e => {
+  e.preventDefault();
+  const r = vp.getBoundingClientRect();
+  zoomAt(e.clientX - r.left, e.clientY - r.top, s * Math.exp(-e.deltaY * 0.0015));
+}, { passive: false });
+$("zin").onclick = () => { const [w, h] = vpSize(); zoomAt(w / 2, h / 2, s * 2); };
+$("zout").onclick = () => { const [w, h] = vpSize(); zoomAt(w / 2, h / 2, s / 2); };
+
+// ---------- pointer gestures
+const ptrs = new Map();
+let moved = false, multi = false, pinch = null, hoverCell = null;
+function pinchInfo() {
+  const [a, b] = [...ptrs.values()];
+  const r = vp.getBoundingClientRect();
+  return { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2 - r.left, my: (a.y + b.y) / 2 - r.top };
+}
+vp.addEventListener("pointerdown", e => {
+  if (e.target.closest("#zoom")) return;
+  vp.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY });
+  if (ptrs.size === 1) { moved = false; multi = false; }
+  if (ptrs.size === 2) { multi = true; pinch = pinchInfo(); }
+});
+vp.addEventListener("pointermove", e => {
+  const cell = cellAt(e);
+  $("coords").textContent = cell ? `${cell[0]}, ${cell[1]}  ·  ${s.toFixed(1)}×` : `${s.toFixed(1)}×`;
+  if (e.pointerType === "mouse") { hoverCell = cell; renderHover(); }
+  if (cell) sendCursor(cell);
+  const p = ptrs.get(e.pointerId);
+  if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  p.x = e.clientX; p.y = e.clientY;
+  if (ptrs.size === 1) {
+    if (!moved && Math.hypot(p.x - p.sx, p.y - p.sy) > (e.pointerType === "touch" ? 10 : 5)) moved = true;
+    if (moved) { vx += dx; vy += dy; clampView(); apply(); }
+  } else if (ptrs.size === 2 && pinch) {
+    const n = pinchInfo();
+    vx += n.mx - pinch.mx; vy += n.my - pinch.my;
+    zoomAt(n.mx, n.my, s * (n.d / pinch.d));
+    pinch = n;
+  }
+});
+function endPtr(e) {
+  if (!ptrs.has(e.pointerId)) return;
+  const tap = ptrs.size === 1 && !moved && !multi && e.type === "pointerup";
+  ptrs.delete(e.pointerId);
+  if (ptrs.size < 2) pinch = null;
+  if (tap) onTap(e);
+}
+vp.addEventListener("pointerup", endPtr);
+vp.addEventListener("pointercancel", endPtr);
+vp.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") { hoverCell = null; renderHover(); } });
+
+function onTap(e) {
+  const cell = cellAt(e);
+  if (!cell) return;
+  // Touch at low zoom: a pixel is smaller than a finger, so tap (or double-tap) zooms in instead of painting.
+  if (e.pointerType !== "mouse" && s < 6) { centerOn(cell[0], cell[1], 12); return; }
+  paint(cell[0], cell[1]);
+}
+function renderHover() {
+  const h = $("hover");
+  if (!hoverCell) { h.style.display = "none"; return; }
+  h.style.display = "block";
+  h.style.left = `${vx + hoverCell[0] * s}px`; h.style.top = `${vy + hoverCell[1] * s}px`;
+  h.style.width = h.style.height = `${Math.max(s, 2)}px`;
+  h.style.background = PAL[sel];
+}
+
+// ---------- palette + cooldown
+let sel = 3, cdUntil = 0;
+const palEl = $("pal");
+PAL.forEach((c, i) => {
+  const b = document.createElement("button");
+  b.className = "sw"; b.style.background = c; b.setAttribute("aria-label", `Colour ${i + 1}`);
+  b.setAttribute("aria-pressed", i === sel);
+  b.onclick = () => { sel = i; [...palEl.children].forEach((x, j) => x.setAttribute("aria-pressed", j === i)); renderHover(); };
+  palEl.append(b);
+});
+function cdTick() {
+  const left = cdUntil - Date.now();
+  if (left <= 0) {
+    $("cd").classList.add("ready"); palEl.classList.remove("cooling");
+    $("cdText").textContent = "Ready to paint"; $("cdBar").style.transform = "scaleX(1)";
+    return;
+  }
+  $("cd").classList.remove("ready"); palEl.classList.add("cooling");
+  $("cdText").textContent = `Next pixel in ${(left / 1000).toFixed(1)}s`;
+  $("cdBar").style.transform = `scaleX(${1 - left / COOLDOWN})`;
+  requestAnimationFrame(cdTick);
+}
+function startCooldown(ms) { cdUntil = Date.now() + ms; requestAnimationFrame(cdTick); }
+
+// ---------- supabase
+if (SUPABASE_URL.includes("YOUR-PROJECT")) {
+  toast("Supabase is not configured (public/config.js)", 1e9, true);
+  throw new Error("not configured");
+}
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let uid = null, chan = null, wasSubscribed = false;
+const me = {
+  emoji: localStorage.getItem("ip_emoji") || EMOJI[Math.floor(Math.random() * EMOJI.length)],
+  name: localStorage.getItem("ip_name") || "",
+};
+if (!me.name) me.name = `${["Pixel", "Neon", "Turbo", "Cosmic", "Lucky"][Math.floor(Math.random() * 5)]}${Math.floor(Math.random() * 900 + 100)}`;
+try { localStorage.setItem("ip_emoji", me.emoji); localStorage.setItem("ip_name", me.name); } catch {}
+$("nameIn").value = me.name;
+
+async function paint(x, y) {
+  const left = cdUntil - Date.now();
+  if (left > 0) { toast(`Cooling down: ${(left / 1000).toFixed(1)}s`); return; }
+  if (!uid) { toast("Connecting…"); return; }
+  const c = sel, old = pix[y * N + x];
+  if (old === c) return;
+  setPix(x, y, c); startCooldown(COOLDOWN + 100);
+  const { error } = await sb.rpc("paint_pixel", { x, y, c });
+  if (error) {
+    if (pix[y * N + x] === c) setPix(x, y, old);
+    const m = /([0-9.]+) seconds/.exec(error.message);
+    if (m) { startCooldown(parseFloat(m[1]) * 1000); toast("Cooling down…"); }
+    else { cdUntil = 0; toast(`Couldn't paint: ${error.message}`, 3000, true); }
+    return;
+  }
+  chan?.send({ type: "broadcast", event: "px", payload: { x, y, c } });
+}
+
+let loading = false;
+async function loadAll() {
+  if (loading) return; loading = true;
+  let done = 0; $("prog").style.width = "4%";
+  const batches = [0, 2, 4, 6, 8].map(ty =>
+    sb.rpc("get_tiles", { tx_min: 0, ty_min: ty, tx_max: 9, ty_max: ty + 1 }).then(({ data, error }) => {
+      if (error) throw error;
+      for (const r of data) drawTile(r.tx, r.ty, r.b64);
+      done += data.length; $("prog").style.width = `${done}%`;
+    }));
+  try { await Promise.all(batches); }
+  catch (e) { toast(`Load failed: ${e.message}`, 4000, true); }
+  finally { loading = false; setTimeout(() => { $("prog").style.width = "100%"; }, 0); }
+}
+
+// ---------- realtime: pixels, presence, cursors
+const cursors = new Map();
+let lastCur = 0, curPending = null;
+function sendCursor(cell) {
+  if (!chan || !wasSubscribed) return;
+  curPending = cell;
+  const now = Date.now();
+  if (now - lastCur < 100) return;
+  lastCur = now;
+  chan.send({ type: "broadcast", event: "cur", payload: { id: uid, x: curPending[0], y: curPending[1], e: me.emoji } });
+}
+function renderCursors() {
+  const layer = $("cursors"), now = Date.now();
+  for (const [id, c] of cursors) {
+    if (now - c.t > 5000) { c.el.remove(); cursors.delete(id); continue; }
+    c.el.style.left = `${vx + (c.x + 0.5) * s}px`; c.el.style.top = `${vy + c.y * s}px`;
+    if (!c.el.parentNode) layer.append(c.el);
+  }
+}
+setInterval(renderCursors, 1000);
+
+function connect() {
+  chan = sb.channel("canvas", { config: { broadcast: { self: false }, presence: { key: uid } } });
+  chan
+    .on("broadcast", { event: "px" }, ({ payload: p }) => {
+      if (Number.isInteger(p.x) && Number.isInteger(p.y) && Number.isInteger(p.c) &&
+          p.x >= 0 && p.x < N && p.y >= 0 && p.y < N && p.c >= 0 && p.c < 16) setPix(p.x, p.y, p.c);
+    })
+    .on("broadcast", { event: "cur" }, ({ payload: p }) => {
+      if (!p || p.id === uid || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+      let c = cursors.get(p.id);
+      if (!c) { c = { el: document.createElement("div") }; c.el.className = "cur"; cursors.set(p.id, c); }
+      c.el.textContent = String(p.e || "👾").slice(0, 4);
+      c.x = p.x; c.y = p.y; c.t = Date.now();
+      renderCursors();
+    })
+    .on("presence", { event: "sync" }, () => {
+      const st = chan.presenceState();
+      $("count").textContent = Math.max(1, Object.keys(st).length);
+      for (const [id, c] of cursors) if (!st[id]) { c.el.remove(); cursors.delete(id); }
+    })
+    .subscribe(async status => {
+      if (status === "SUBSCRIBED") {
+        await chan.track({ emoji: me.emoji, name: me.name });
+        if (wasSubscribed) loadAll(); // reconnect: refetch so state cannot drift
+        wasSubscribed = true;
+      }
+    });
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && uid) loadAll(); });
+
+// ---------- leaderboard + name
+let lbTimer;
+async function loadLb() {
+  const { data, error } = await sb.rpc("leaderboard");
+  const ol = $("lb"); ol.textContent = "";
+  if (error || !data.length) {
+    const li = document.createElement("li"); li.className = "muted";
+    li.textContent = error ? "Couldn't load leaderboard" : "No painters yet. Be the first!";
+    ol.append(li); return;
+  }
+  data.forEach((r, i) => {
+    const li = document.createElement("li");
+    const rk = document.createElement("span"); rk.className = "rk"; rk.textContent = `#${i + 1}`;
+    const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = r.name;
+    const ct = document.createElement("span"); ct.className = "ct"; ct.textContent = r.pixel_count.toLocaleString();
+    li.append(rk, nm, ct); ol.append(li);
+  });
+}
+function openDrawer(open) {
+  document.body.classList.toggle("open", open);
+  clearInterval(lbTimer);
+  if (open) { loadLb(); lbTimer = setInterval(loadLb, 10000); }
+}
+$("lbBtn").onclick = () => openDrawer(true);
+$("closeBtn").onclick = $("scrim").onclick = () => openDrawer(false);
+$("nameForm").onsubmit = async e => {
+  e.preventDefault();
+  const n = $("nameIn").value.trim().slice(0, 24);
+  if (!n) return;
+  me.name = n; try { localStorage.setItem("ip_name", n); } catch {}
+  const { error } = await sb.rpc("set_name", { n });
+  if (error) { toast(`Couldn't save: ${error.message}`, 3000, true); return; }
+  chan?.track({ emoji: me.emoji, name: me.name });
+  toast("Name saved"); loadLb();
+};
+
+// ---------- boot
+fit();
+(async () => {
+  let { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    const r = await sb.auth.signInAnonymously();
+    if (r.error) { toast(`Sign-in failed: ${r.error.message}`, 1e9, true); return; }
+    session = r.data.session;
+  }
+  uid = session.user.id;
+  loadAll();
+  connect();
+  sb.rpc("set_name", { n: me.name });
+  const touch = matchMedia("(pointer: coarse)").matches;
+  toast(touch ? "Tap to zoom in, then tap a pixel to paint" : "Click to paint · scroll to zoom · drag to pan", 3500);
+  setTimeout(() => toast(`Enjoying this? <a href="https://supaclaude.vercel.app/" target="_blank" rel="noopener">Vote for Infinipixels on the board ↗</a>`, 8000), 30000);
+})();
+</script>
+</body>
+</html>
