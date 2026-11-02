@@ -82,6 +82,20 @@ browser (single static page)
 
 To regenerate the seed banner and `public/og-static.png`, run `python tools/gen_seed.py` (stdlib only).
 
+## Roadmap
+
+Gamification ideas, roughly in build order. Everything stays server-authoritative in Postgres.
+
+| Idea | What players see | Effort |
+|---|---|---|
+| **Levels + XP bar** | Your score maps to Lv 1–20, with an XP bar on the palette, a level-up flash, and "Lv 7" on the leaderboard. | ~20 min |
+| **Combo streak** | Paint again within 0.5 s of the cooldown ending to build a ×2, ×3… combo. Cosmetic only. | ~15 min |
+| **Capture the Zone** | Every 5 minutes a 50×50 zone glows with a countdown. The team owning the most of it at zero gets +100 per member, with a banner and fanfare. Scored from the per-pixel team owner data that already exists. | ~40 min |
+| **Quests** | Three hourly goals ("Paint 15 pixels", "Use 5 colours", "Paint inside the zone") with bonus points. | ~45 min |
+| **Double-points minutes** | A random 2-minute burst where paints count double, announced to everyone. | ~15 min |
+| **Cosmetic unlocks** | Achievements unlock extra cursor emojis and badge frames. | ~30 min |
+| **Upgrades / tech tree** | Spend points on a faster cooldown, a bigger brush, or shields. Parked: it lets early players outpace newcomers, and bigger brushes make vandalism easier. Only worth doing if the upgrades are cosmetic. | 90+ min |
+
 ## Known limits
 
 - Cursor broadcasts come from clients, so a modified client can fake its cursor. Pixels, achievements and golden events are sent only by the database.
