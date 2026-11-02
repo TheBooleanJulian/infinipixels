@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKER_SECRETS = ["SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY"]
+WORKER_SECRETS = ["SUPABASE_SERVICE_ROLE_KEY"]
 
 
 def read_env(path):
