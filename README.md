@@ -19,7 +19,7 @@ Open the link and you are painting. There is no sign-up, and everyone sees every
 
 - **One shared million-pixel canvas.** Every pixel is persisted in Supabase and shown to everyone instantly.
 - **Live presence.** A "N painting now" counter and emoji cursors for the other painters.
-- **Fair play.** One pixel every 3 seconds, enforced in the database, with a cooldown timer on the palette.
+- **Fair play.** One pixel every 2 seconds, enforced in the database, with a cooldown timer on the palette.
 - **Instant feel.** Your pixel appears immediately and rolls back if the server rejects it.
 - **Desktop and mobile.**
   - Desktop: scroll to zoom, drag to pan, hover preview.
@@ -33,7 +33,7 @@ Open the link and you are painting. There is no sign-up, and everyone sees every
 browser (single static page)
   ├─ supabase.auth.signInAnonymously()   silent identity, no UI
   ├─ rpc get_tiles(...)                  100 tiles × 10,000 bytes, as base64, in 5 batches
-  ├─ rpc paint_pixel(x, y, c)            SECURITY DEFINER: validate, 3 s cooldown, set_byte on the tile
+  ├─ rpc paint_pixel(x, y, c)            SECURITY DEFINER: validate, 2 s cooldown, set_byte on the tile
   └─ Realtime channel "canvas"
        ├─ broadcast "px"   {x, y, c}     after a successful paint
        ├─ broadcast "cur"  {x, y, emoji} cursors, throttled to ~10/s

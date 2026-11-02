@@ -62,18 +62,18 @@ begin
     raise exception 'bad colour';
   end if;
 
-  -- Atomic cooldown: the upsert only succeeds when the last paint is >= 3s old.
+  -- Atomic cooldown: the upsert only succeeds when the last paint is >= 2s old.
   insert into public.painters as p (user_id, last_paint_at, pixel_count)
   values (uid, clock_timestamp(), 1)
   on conflict (user_id) do update
     set last_paint_at = clock_timestamp(),
         pixel_count   = p.pixel_count + 1
     where p.last_paint_at is null
-       or p.last_paint_at <= clock_timestamp() - interval '3 seconds'
+       or p.last_paint_at <= clock_timestamp() - interval '2 seconds'
   returning p.last_paint_at into got;
 
   if got is null then
-    select 3 - extract(epoch from (clock_timestamp() - p.last_paint_at))
+    select 2 - extract(epoch from (clock_timestamp() - p.last_paint_at))
       into remaining
       from public.painters p where p.user_id = uid;
     raise exception 'cooldown: % seconds remaining', round(greatest(remaining, 0.1), 1);
