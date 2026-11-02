@@ -75,8 +75,8 @@ browser (single static page)
    [`migration.sql`](supabase/migration.sql), [`002_game.sql`](supabase/002_game.sql), [`003_extras.sql`](supabase/003_extras.sql), [`seed.sql`](supabase/seed.sql).
 2. Turn on **Authentication → Providers → Allow anonymous sign-ins**.
 3. Put your project URL and **anon/public** key in [`public/config.js`](public/config.js). Never use the service-role key there.
-4. Set `SUPABASE_URL` in [`wrangler.jsonc`](wrangler.jsonc), then add the Worker secrets:
-   `npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY` and `npx wrangler secret put ANTHROPIC_API_KEY`.
+4. Set `SUPABASE_URL` in [`wrangler.jsonc`](wrangler.jsonc). Put `SUPABASE_SERVICE_ROLE_KEY` and `ANTHROPIC_API_KEY` in `.env`
+   (see [`.env.example`](.env.example)), then upload them as Worker secrets with `python tools/push_secrets.py`.
 5. Run `npm ci`, then `npx wrangler deploy`. Run npm outside Google Drive: clone the repo to a local folder first.
 6. Optional, for GitHub saving:
    - Enable **Authentication → Providers → GitHub** (a GitHub OAuth app with callback `https://<ref>.supabase.co/auth/v1/callback`).
