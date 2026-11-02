@@ -173,7 +173,8 @@ body.open #scrim { display: block; }
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 
-const N = 1000, T = 100, COOLDOWN = 3000, MAX_S = 40;
+const N = 1000, T = 100, COOLDOWN = 2000, MAX_S = 40;
+const START = { x: 536, y: 506, s: 2.4 };
 // r/place 2017 palette; must match tools/gen_seed.py
 const PAL = ["#FFFFFF","#E4E4E4","#888888","#222222","#FFA7D1","#E50000","#E59500","#A06A42",
              "#E5D900","#94E044","#02BE01","#00D3DD","#0083C7","#0000EA","#CF6EE4","#820080"];
@@ -473,6 +474,7 @@ $("nameForm").onsubmit = async e => {
 
 // ---------- boot
 fit();
+centerOn(START.x, START.y, START.s);
 (async () => {
   let { data: { session } } = await sb.auth.getSession();
   if (!session) {
