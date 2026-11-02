@@ -1,0 +1,12 @@
+{
+  "name": "infinipixels",
+  "private": true,
+  "type": "module",
+  "description": "Worker for Infinipixels: live og:image and the Claude commentator. The page itself has no build step.",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "*"
+  }
+}
