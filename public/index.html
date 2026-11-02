@@ -35,7 +35,7 @@
   --ink: #e8ecff; --ink-muted: #9ca5d4; --ink-faint: #8089bd;
   --cyan: #00e5ff; --magenta: #ff2bd6; --cyan-ink: #19e6ff; --magenta-ink: #ff6be2;
   --cyan-tint: rgba(0, 229, 255, 0.10); --magenta-tint: rgba(255, 43, 214, 0.12); --on-accent: #02101a;
-  --danger: #ff6482; --warning: #ffc233;
+  --danger: #ff6482; --warning: #ffc233; --success: #2de2a6;
   --glow-cyan: 0 0 0 1px rgba(0, 229, 255, 0.55), 0 0 18px rgba(0, 229, 255, 0.30);
   --glow-magenta: 0 0 0 1px rgba(255, 43, 214, 0.55), 0 0 18px rgba(255, 43, 214, 0.30);
   --elevation: 0 12px 32px rgba(0, 0, 0, 0.55);
@@ -76,6 +76,7 @@ header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; h
 }
 .btn:hover, .btn:focus-visible { border-color: var(--cyan-ink); box-shadow: var(--glow-cyan); outline: none; }
 .btn--primary { background: var(--cyan); border-color: var(--cyan); color: var(--on-accent); }
+.btn:disabled { cursor: default; color: var(--success); border-color: var(--line); box-shadow: none; }
 .btn--icon { width: 38px; padding: 0; font-size: 15px; }
 .vote-top { color: var(--cyan-ink); }
 @media (max-width: 600px) { .vote-top { display: none; } }
@@ -115,6 +116,23 @@ header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; h
 .tbar i { display: block; height: 100%; transition: flex-grow 600ms var(--ease-out); }
 #tbC { background: var(--cyan); flex: 1 1 0; }
 #tbM { background: var(--magenta); flex: 1 1 0; }
+
+/* Claude commentary ticker */
+#ticker { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100% - 24px));
+  display: none; padding: 6px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+  font-size: 12.5px; line-height: 17px; text-align: center; pointer-events: none; }
+#ticker b { font: 600 10px/1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan-ink); margin-right: 6px; }
+#ticker.new { animation: tick 600ms var(--ease-out); }
+@keyframes tick { from { opacity: 0; transform: translate(-50%, -6px); } }
+
+/* timelapse replay */
+#replay { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
+#replay.open { display: flex; }
+#replay .rhead, #replay .rbar, #rcv { width: min(92vw, 72vh); }
+#replay .rhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; font: 500 12px/16px var(--font-mono); color: var(--ink); }
+#rcv { height: min(92vw, 72vh); image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 1px var(--line-strong), var(--elevation); }
+#replay .rbar { height: 4px; background: var(--surface-overlay); border-radius: var(--radius-pill); overflow: hidden; }
+#rprog { display: block; height: 100%; width: 0; background: var(--signal); }
 
 /* palette */
 footer { flex: none; background: var(--surface); border-top: 1px solid var(--line); padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); z-index: 5; }
@@ -211,9 +229,11 @@ body.open #scrim { display: block; }
     <div class="tbar"><i id="tbC"></i><i id="tbM"></i></div>
     <span class="tm" id="tmL"><b id="tm">50%</b> Magenta</span>
   </div>
+  <div id="ticker" aria-live="polite"><b>🤖 Claude</b><span id="tickerText"></span></div>
   <div id="tip"></div>
   <div id="coords">—</div>
   <div id="zoom">
+    <button class="btn" id="replayBtn" aria-label="Replay the timelapse">🎬</button>
     <button class="btn" id="goldBtn" aria-label="Fly to the golden pixel">✨</button>
     <button class="btn" id="zin" aria-label="Zoom in">+</button>
     <button class="btn" id="zout" aria-label="Zoom out">−</button>
@@ -239,6 +259,8 @@ body.open #scrim { display: block; }
     <button class="btn" data-t="1" aria-pressed="false">Team Cyan</button>
     <button class="btn" data-t="2" aria-pressed="false">Team Magenta</button>
   </div>
+  <button class="btn" id="ghBtn" type="button">Save progress with GitHub</button>
+  <p class="muted" id="ghNote" style="margin:-6px 0 0">Keep your score and badges on any device.</p>
   <div class="stats">
     <div class="stat"><b id="stScore">0</b><span>score</span></div>
     <div class="stat"><b id="stRank">–</b><span>rank</span></div>
@@ -254,6 +276,11 @@ body.open #scrim { display: block; }
   </div>
 </aside>
 <div id="toast" role="status"></div>
+<div id="replay" role="dialog" aria-label="Timelapse replay">
+  <div class="rhead"><span id="rlabel">Loading…</span><button class="btn" id="rclose">Close</button></div>
+  <canvas id="rcv" width="1000" height="1000"></canvas>
+  <div class="rbar"><i id="rprog"></i></div>
+</div>
 <div id="unlock" role="status"><div class="ic"></div><div><small>Achievement unlocked</small><b></b><span></span></div></div>
 
 <script type="module">
@@ -611,6 +638,12 @@ if (SUPABASE_URL.includes("YOUR-PROJECT")) {
   toast("Supabase is not configured (public/config.js)", 1e9, true);
   throw new Error("not configured");
 }
+// An OAuth error comes back in the URL; read it before supabase-js consumes the URL.
+const authErr = new URLSearchParams(location.hash.slice(1)).get("error_description")
+             || new URLSearchParams(location.search).get("error_description");
+if (authErr) history.replaceState(null, "", location.pathname);
+const GITHUB = { provider: "github", options: { redirectTo: location.origin } };
+const AUTO_NAME = /^(Pixel|Neon|Turbo|Cosmic|Lucky)\d{3}$/;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let uid = null, chan = null, wasSubscribed = false;
 const me = {
@@ -662,17 +695,74 @@ async function loadAll() {
 }
 async function loadState() {
   const { data } = await sb.rpc("get_state");
-  if (data) { setScores(data.s); setGolden(data.g); }
+  if (data) { setScores(data.s); setGolden(data.g); setTicker(data.m); }
 }
 async function loadStats() {
   const { data } = await sb.rpc("my_stats");
-  if (!data) return;
+  if (!data) return null;
   (data.ach || []).forEach(code => earned.add(code));
   renderBadges();
   if (data.team) { me.team = data.team; renderTeam(); }
   $("stScore").textContent = (data.score || 0).toLocaleString();
   $("stRank").textContent = data.score ? `#${data.rank}` : "–";
+  return data;
 }
+
+// ---------- Claude commentary ticker (lines are written by the Worker cron)
+function setTicker(line) {
+  if (!line) return;
+  const t = $("ticker");
+  $("tickerText").textContent = line; t.style.display = "block";
+  t.classList.remove("new"); void t.offsetWidth; t.classList.add("new");
+}
+
+// ---------- timelapse replay: rewind the live canvas with each paint's previous colour, then play forward
+let replayRun = 0;
+async function openReplay() {
+  const run = ++replayRun, rctx = $("rcv").getContext("2d");
+  $("replay").classList.add("open"); $("rlabel").textContent = "Loading history…"; $("rprog").style.width = "0";
+  const { data, error } = await sb.rpc("timelapse");
+  if (run !== replayRun) return;
+  if (error || !data) { $("rlabel").textContent = "Couldn't load history"; return; }
+  const bin = atob(data.b64 || ""), n = Math.floor(bin.length / 6);
+  if (!n) { $("rlabel").textContent = "No paints yet. Be the first!"; return; }
+  const ev = [];
+  for (let i = 0; i < n; i++) {
+    const o = i * 6, x = (bin.charCodeAt(o) << 8) | bin.charCodeAt(o + 1), y = (bin.charCodeAt(o + 2) << 8) | bin.charCodeAt(o + 3);
+    if (x < N && y < N) ev.push([x, y, bin.charCodeAt(o + 4) & 15, bin.charCodeAt(o + 5) & 15]);
+  }
+  const base = pix.slice();
+  for (let i = ev.length - 1; i >= 0; i--) base[ev[i][1] * N + ev[i][0]] = ev[i][3];
+  const img = rctx.createImageData(N, N), d = img.data;
+  for (let i = 0; i < N * N; i++) { const rgb = RGB[base[i]]; d[i * 4] = rgb[0]; d[i * 4 + 1] = rgb[1]; d[i * 4 + 2] = rgb[2]; d[i * 4 + 3] = 255; }
+  rctx.putImageData(img, 0, 0);
+  const dur = Math.min(15000, Math.max(4000, ev.length * 25)), t0 = performance.now();
+  let done = 0;
+  $("rlabel").textContent = `Replaying ${ev.length.toLocaleString()} paints`;
+  const step = now => {
+    if (run !== replayRun) return;
+    const k = Math.min(1, (now - t0) / dur), upto = Math.floor(k * ev.length);
+    for (; done < upto; done++) { const [x, y, c] = ev[done]; rctx.fillStyle = PAL[c]; rctx.fillRect(x, y, 1, 1); }
+    $("rprog").style.width = `${k * 100}%`;
+    if (k < 1) requestAnimationFrame(step);
+    else $("rlabel").textContent = `${ev.length.toLocaleString()} paints · that's the canvas now`;
+  };
+  requestAnimationFrame(step);
+}
+$("replayBtn").onclick = openReplay;
+$("rclose").onclick = () => { replayRun++; $("replay").classList.remove("open"); };
+
+// ---------- save progress with GitHub (anonymous -> permanent account)
+function renderAuth(user) {
+  const linked = !!user && !user.is_anonymous;
+  $("ghBtn").textContent = linked ? "✓ Saved with GitHub" : "Save progress with GitHub";
+  $("ghBtn").disabled = linked;
+  $("ghNote").textContent = linked ? "Your score and badges follow you to any device." : "Keep your score and badges on any device.";
+}
+$("ghBtn").onclick = async () => {
+  const { error } = await sb.auth.linkIdentity(GITHUB);  // on success the browser goes to GitHub
+  if (error) toast(`GitHub isn't available right now: ${esc(error.message)}`, 4000, true);
+};
 
 // ---------- realtime: pixels + events from the database, cursors + presence from clients
 const cursors = new Map();
@@ -720,6 +810,7 @@ function connect() {
       setGolden(p);
       if (p.n && p.n !== me.name) shout(`${esc(p.e || "👾")} ${esc(p.n)} grabbed the golden pixel! ✨ A new one appeared.`);
     })
+    .on("broadcast", { event: "commentary" }, ({ payload: p }) => { if (p?.m) setTicker(String(p.m)); })
     .on("broadcast", { event: "cur" }, ({ payload: p }) => {
       if (!p || p.id === uid || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
       let c = cursors.get(p.id);
@@ -799,6 +890,14 @@ renderBadges();
 // ---------- boot
 fit();
 (async () => {
+  if (authErr) {
+    if (/already/i.test(authErr)) {  // that GitHub account already has a painter: sign in as them instead
+      toast("That GitHub account already has a painter. Signing you in…", 4000);
+      const r = await sb.auth.signInWithOAuth(GITHUB);
+      if (!r.error) return;
+    }
+    toast(`GitHub: ${esc(authErr)}`, 5000, true);
+  }
   let { data: { session } } = await sb.auth.getSession();
   if (!session) {
     const r = await sb.auth.signInAnonymously();
@@ -806,8 +905,16 @@ fit();
     session = r.data.session;
   }
   uid = session.user.id;
+  renderAuth(session.user);
   const tiles = loadAll();
   connect(); loadState();
+  // The server profile wins (e.g. GitHub sign-in on a new device); otherwise keep the local one.
+  const stats = await loadStats();
+  if (stats?.name) me.name = stats.name;
+  if (stats?.emoji) me.emoji = stats.emoji;
+  const gh = session.user.user_metadata?.user_name;
+  if (gh && AUTO_NAME.test(me.name)) me.name = String(gh).slice(0, 24);
+  saveLocal(); $("nameIn").value = me.name; $("emojiBtn").textContent = me.emoji;
   saveProfile().then(loadStats);
   await tiles;
   flyTo(START.x, START.y, START.s, 1100);

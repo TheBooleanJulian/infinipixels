@@ -1,4 +1,4 @@
-"""Generate supabase/seed.sql (banner + border art) and public/og.png. Stdlib only.
+"""Generate supabase/seed.sql (banner + border art) and public/og-static.png. Stdlib only.
 
 Run from the repo root:  python tools/gen_seed.py
 """
@@ -105,8 +105,9 @@ def main():
     # og.png 1200x630: the canvas' centre 1000x630 band on the brand background (#05060d, index 16)
     W, H, top, side = 1200, 630, (N - 630) // 2, 100
     rows = [[16] * side + list(pix[(top + r) * N:(top + r + 1) * N]) + [16] * side for r in range(H)]
-    write_png(ROOT / "public" / "og.png", W, H, rows, PALETTE + ["05060D"])
-    print(f"{len(all_rects)} rects -> supabase/seed.sql, public/og.png")
+    # fallback for the Worker's live /og.png
+    write_png(ROOT / "public" / "og-static.png", W, H, rows, PALETTE + ["05060D"])
+    print(f"{len(all_rects)} rects -> supabase/seed.sql, public/og-static.png")
 
 
 if __name__ == "__main__":
