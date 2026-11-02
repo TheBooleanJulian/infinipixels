@@ -24,7 +24,14 @@ Open the link and you are painting. There is no sign-up, and everyone sees every
 - **Desktop and mobile.**
   - Desktop: scroll to zoom, drag to pan, hover preview.
   - Mobile: pinch to zoom, one finger to pan, tap to zoom in, then tap to paint.
-- **Leaderboard.** Top 10 painters, and you can pick your own display name.
+- **Team Cyan vs Team Magenta.** Every painter joins a team, and a live tug-of-war bar shows who owns more of the canvas.
+- **12 achievements**, granted in Postgres, with confetti and a chime when one unlocks. Examples:
+  First Pixel, Centurion, Explorer, Full Spectrum, Collaborator, Defender, On Fire, Gold Rush, Night Owl.
+- **Golden pixel bounty.** A shimmering ✨ pixel is worth +25 and moves somewhere new once claimed, or after 5 minutes.
+- **Who painted this?** Hover any pixel to see who painted it and when.
+- **Sound.** Synthesised blips pitched by colour, so the palette is a musical scale. Other people's paints make quiet ambient blips.
+  A mute toggle is in the header.
+- **Leaderboard.** Top 10 painters by score, with a personal card for your score, rank and badges.
 - **Zero friction.** Anonymous sign-in happens silently on load.
 
 ## How it works
@@ -33,10 +40,11 @@ Open the link and you are painting. There is no sign-up, and everyone sees every
 browser (single static page)
   ├─ supabase.auth.signInAnonymously()   silent identity, no UI
   ├─ rpc get_tiles(...)                  100 tiles × 10,000 bytes, as base64, in 5 batches
-  ├─ rpc paint_pixel(x, y, c)            SECURITY DEFINER: validate, 2 s cooldown, set_byte on the tile
+  ├─ rpc paint_pixel(x, y, c)            SECURITY DEFINER: validate, 2 s cooldown, set_byte, team score,
+  │                                      achievements, golden pixel, then realtime.send() from Postgres
   └─ Realtime channel "canvas"
-       ├─ broadcast "px"   {x, y, c}     after a successful paint
-       ├─ broadcast "cur"  {x, y, emoji} cursors, throttled to ~10/s
+       ├─ "px" / "ach" / "golden"        sent by the database (server-authoritative)
+       ├─ broadcast "cur"  {x, y, emoji} cursors from clients, throttled to ~10/s
        └─ presence                       live painter count
 ```
 
@@ -57,7 +65,8 @@ browser (single static page)
 
 ## Run your own
 
-1. Create a Supabase project. In the SQL editor, run [`supabase/migration.sql`](supabase/migration.sql), then [`supabase/seed.sql`](supabase/seed.sql).
+1. Create a Supabase project. In the SQL editor, run these in order:
+   [`supabase/migration.sql`](supabase/migration.sql), [`supabase/002_game.sql`](supabase/002_game.sql), [`supabase/seed.sql`](supabase/seed.sql).
 2. Turn on **Authentication → Providers → Allow anonymous sign-ins**.
 3. Put your project URL and **anon/public** key in [`public/config.js`](public/config.js). Never use the service-role key there.
 4. Deploy with `npx wrangler deploy`. Or serve `public/` from any static host.
@@ -66,6 +75,5 @@ To regenerate the seed banner and `public/og.png`, run `python tools/gen_seed.py
 
 ## Known limits
 
-- Pixel broadcasts come from clients, so a modified client could show fake pixels to others until they refocus or reconnect.
-  The database stays authoritative.
+- Cursor broadcasts come from clients, so a modified client can fake its cursor. Pixels, achievements and golden events are sent only by the database.
 - The cooldown applies per anonymous identity, so clearing site data gives you a fresh one.
