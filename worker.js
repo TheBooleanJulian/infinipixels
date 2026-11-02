@@ -87,7 +87,7 @@ async function encodePng(w, h, indices) {
 // ---------------------------------------------------------------- /og.png
 async function ogImage(request, env, ctx) {
   const cache = caches.default, key = new Request(new URL("/og.png", request.url).toString());
-  const hit = await cache.match(key);
+  const hit = await cache.match(key).catch(() => null);  // the cache is best-effort
   if (hit) return hit;
   try {
     const pix = await loadCanvas(env);
@@ -98,7 +98,7 @@ async function ogImage(request, env, ctx) {
     const res = new Response(await encodePng(W, H, img), {
       headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=60" },
     });
-    ctx.waitUntil(cache.put(key, res.clone()));
+    ctx.waitUntil(cache.put(key, res.clone()).catch(() => {}));
     return res;
   } catch (e) {
     console.error("og.png", e);

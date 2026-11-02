@@ -31,6 +31,11 @@ Open the link and you are painting. There is no sign-up, and everyone sees every
 - **Who painted this?** Hover any pixel to see who painted it and when.
 - **Sound.** Synthesised blips pitched by colour, so the palette is a musical scale. Other people's paints make quiet ambient blips.
   A mute toggle is in the header.
+- **Timelapse.** 🎬 rewinds the canvas and replays every paint in about 15 seconds.
+- **Claude commentator.** Every few minutes, if people painted, Claude looks at the canvas and posts a one-line commentary to everyone.
+  It flags offensive art for review instead of posting it.
+- **Live share image.** `/og.png` is rendered from the current canvas, so links show what people drew.
+- **Save with GitHub.** Turn your anonymous painter into a GitHub-linked account, so your score and badges follow you to other devices.
 - **Leaderboard.** Top 10 painters by score, with a personal card for your score, rank and badges.
 - **Zero friction.** Anonymous sign-in happens silently on load.
 
@@ -60,18 +65,25 @@ browser (single static page)
 |---|---|
 | Frontend | One static `index.html`, vanilla JS, no build step. `supabase-js` comes from a pinned CDN. |
 | Data, auth, realtime | Supabase: Postgres, anonymous auth, Realtime Broadcast + Presence |
-| Hosting | Cloudflare Workers static assets |
+| Hosting | Cloudflare Workers: static assets plus a small `worker.js` for `/og.png` and the commentator cron |
+| AI | Claude (`claude-opus-5-5`) via `@anthropic-ai/sdk`, used only in the Worker |
 | Design | Julian Unified UI (TheBooleanJulian design system) |
 
 ## Run your own
 
 1. Create a Supabase project. In the SQL editor, run these in order:
-   [`supabase/migration.sql`](supabase/migration.sql), [`supabase/002_game.sql`](supabase/002_game.sql), [`supabase/seed.sql`](supabase/seed.sql).
+   [`migration.sql`](supabase/migration.sql), [`002_game.sql`](supabase/002_game.sql), [`003_extras.sql`](supabase/003_extras.sql), [`seed.sql`](supabase/seed.sql).
 2. Turn on **Authentication → Providers → Allow anonymous sign-ins**.
 3. Put your project URL and **anon/public** key in [`public/config.js`](public/config.js). Never use the service-role key there.
-4. Deploy with `npx wrangler deploy`. Or serve `public/` from any static host.
+4. Set `SUPABASE_URL` in [`wrangler.jsonc`](wrangler.jsonc), then add the Worker secrets:
+   `npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY` and `npx wrangler secret put ANTHROPIC_API_KEY`.
+5. Run `npm ci`, then `npx wrangler deploy`. Run npm outside Google Drive: clone the repo to a local folder first.
+6. Optional, for GitHub saving:
+   - Enable **Authentication → Providers → GitHub** (a GitHub OAuth app with callback `https://<ref>.supabase.co/auth/v1/callback`).
+   - Turn on **Allow manual linking**.
+   - Add your site URL to the allowed redirect URLs.
 
-To regenerate the seed banner and `public/og.png`, run `python tools/gen_seed.py` (stdlib only).
+To regenerate the seed banner and `public/og-static.png`, run `python tools/gen_seed.py` (stdlib only).
 
 ## Known limits
 
