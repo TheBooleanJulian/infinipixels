@@ -117,14 +117,6 @@ header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; h
 #tbC { background: var(--cyan); flex: 1 1 0; }
 #tbM { background: var(--magenta); flex: 1 1 0; }
 
-/* Claude commentary ticker */
-#ticker { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100% - 24px));
-  display: none; padding: 6px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
-  font-size: 12.5px; line-height: 17px; text-align: center; pointer-events: none; }
-#ticker b { font: 600 10px/1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan-ink); margin-right: 6px; }
-#ticker.new { animation: tick 600ms var(--ease-out); }
-@keyframes tick { from { opacity: 0; transform: translate(-50%, -6px); } }
-
 /* timelapse replay */
 #replay { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
 #replay.open { display: flex; }
@@ -229,7 +221,6 @@ body.open #scrim { display: block; }
     <div class="tbar"><i id="tbC"></i><i id="tbM"></i></div>
     <span class="tm" id="tmL"><b id="tm">50%</b> Magenta</span>
   </div>
-  <div id="ticker" aria-live="polite"><b>🤖 Claude</b><span id="tickerText"></span></div>
   <div id="tip"></div>
   <div id="coords">—</div>
   <div id="zoom">
@@ -695,7 +686,7 @@ async function loadAll() {
 }
 async function loadState() {
   const { data } = await sb.rpc("get_state");
-  if (data) { setScores(data.s); setGolden(data.g); setTicker(data.m); }
+  if (data) { setScores(data.s); setGolden(data.g); }
 }
 async function loadStats() {
   const { data } = await sb.rpc("my_stats");
@@ -706,14 +697,6 @@ async function loadStats() {
   $("stScore").textContent = (data.score || 0).toLocaleString();
   $("stRank").textContent = data.score ? `#${data.rank}` : "–";
   return data;
-}
-
-// ---------- Claude commentary ticker (lines are written by the Worker cron)
-function setTicker(line) {
-  if (!line) return;
-  const t = $("ticker");
-  $("tickerText").textContent = line; t.style.display = "block";
-  t.classList.remove("new"); void t.offsetWidth; t.classList.add("new");
 }
 
 // ---------- timelapse replay: rewind the live canvas with each paint's previous colour, then play forward
@@ -810,7 +793,6 @@ function connect() {
       setGolden(p);
       if (p.n && p.n !== me.name) shout(`${esc(p.e || "👾")} ${esc(p.n)} grabbed the golden pixel! ✨ A new one appeared.`);
     })
-    .on("broadcast", { event: "commentary" }, ({ payload: p }) => { if (p?.m) setTicker(String(p.m)); })
     .on("broadcast", { event: "cur" }, ({ payload: p }) => {
       if (!p || p.id === uid || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
       let c = cursors.get(p.id);

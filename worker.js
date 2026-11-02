@@ -1,23 +1,16 @@
 // Infinipixels Worker: static assets, plus
 //   GET /og.png   live share image of the canvas (cached 60s; falls back to the static image)
-//   cron          Claude looks at the canvas and posts a one-line commentary (only when people painted)
-import Anthropic from "@anthropic-ai/sdk";
 
 const N = 1000, T = 100;
 // r/place 2017 palette; must match public/index.html. Index 16 is the brand background.
 const PAL = ["FFFFFF", "E4E4E4", "888888", "222222", "FFA7D1", "E50000", "E59500", "A06A42",
              "E5D900", "94E044", "02BE01", "00D3DD", "0083C7", "0000EA", "CF6EE4", "820080", "05060D"];
-const COLOUR_NAMES = ["white", "light grey", "grey", "black", "pink", "red", "orange", "brown",
-                      "yellow", "lime", "green", "cyan", "blue", "dark blue", "lilac", "purple"];
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === "/og.png") return ogImage(request, env, ctx);
     return env.ASSETS.fetch(request);
-  },
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(commentate(env));
   },
 };
 
@@ -104,62 +97,4 @@ async function ogImage(request, env, ctx) {
     console.error("og.png", e);
     return env.ASSETS.fetch(new Request(new URL("/og-static.png", request.url)));
   }
-}
-
-// ---------------------------------------------------------------- Claude commentator
-const SYSTEM = `You are the live commentator for Infinipixels, a shared 1000x1000 pixel canvas that a hackathon audience paints together in real time.
-Players are on Team Cyan or Team Magenta. The image is the whole canvas right now. A "SUPABASE x CLAUDE" banner and a blue border are the starting art.
-Reply with ONE short, upbeat, specific line (max 120 characters) about what people are drawing or how the team battle is going. Mention a rough location (e.g. "top left", "just under the banner") when useful. No hashtags, no quotes.
-Do not repeat any of the recent lines you are given.
-If the canvas contains hateful, sexual or otherwise offensive imagery or text, reply instead with "MODERATION: " followed by a short neutral description of what and where, and nothing else.`;
-
-async function commentate(env) {
-  if (!env.ANTHROPIC_API_KEY) return;  // set with: npx wrangler secret put ANTHROPIC_API_KEY
-  const state = await rpc(env, "commentary_context");
-  if (!state?.due) return;  // nobody painted since the last line: save the call
-
-  const png = await encodePng(N, N, await loadCanvas(env));
-  let b64 = "";
-  for (let i = 0; i < png.length; i += 0x8000) b64 += String.fromCharCode(...png.subarray(i, i + 0x8000));
-  b64 = btoa(b64);
-
-  const s = state.scores || {}, cy = +s[1] || 0, mg = +s[2] || 0;
-  const context = [
-    `Team pixels: Cyan ${cy}, Magenta ${mg}.`,
-    `Last 5 minutes: ${state.paints_5m} paints by ${state.painters_5m} painters.`,
-    `Palette names, in case you need them: ${COLOUR_NAMES.join(", ")}.`,
-    `Recent lines (do not repeat): ${(state.recent || []).join(" | ") || "none yet"}.`,
-  ].join("\n");
-
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-  let response;
-  try {
-    response = await client.beta.messages.create({
-      model: "claude-opus-5-5",
-      max_tokens: 2000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: { effort: "low" },
-      system: SYSTEM,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: "image/png", data: b64 } },
-          { type: "text", text: context },
-        ],
-      }],
-    });
-  } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) console.warn("commentator: rate limited, skipping this tick");
-    else if (error instanceof Anthropic.APIError) console.error(`commentator: API error ${error.status}`, error.message);
-    else throw error;
-    return;
-  }
-  if (response.stop_reason === "refusal") { console.warn("commentator: refusal", response.stop_details?.category); return; }
-
-  const line = response.content.filter(b => b.type === "text").map(b => b.text).join(" ").replace(/\s+/g, " ").trim();
-  if (!line) return;
-  const flagged = line.startsWith("MODERATION:");
-  await rpc(env, "post_commentary", { line, flagged });
-  console.log(`commentator: ${flagged ? "FLAGGED " : ""}${line}`);
 }

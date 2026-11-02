@@ -32,8 +32,6 @@ Open the link and you are painting. There is no sign-up, and everyone sees every
 - **Sound.** Synthesised blips pitched by colour, so the palette is a musical scale. Other people's paints make quiet ambient blips.
   A mute toggle is in the header.
 - **Timelapse.** 🎬 rewinds the canvas and replays every paint in about 15 seconds.
-- **Claude commentator.** Every few minutes, if people painted, Claude looks at the canvas and posts a one-line commentary to everyone.
-  It flags offensive art for review instead of posting it.
 - **Live share image.** `/og.png` is rendered from the current canvas, so links show what people drew.
 - **Save with GitHub.** Turn your anonymous painter into a GitHub-linked account, so your score and badges follow you to other devices.
 - **Leaderboard.** Top 10 painters by score, with a personal card for your score, rank and badges.
@@ -65,8 +63,7 @@ browser (single static page)
 |---|---|
 | Frontend | One static `index.html`, vanilla JS, no build step. `supabase-js` comes from a pinned CDN. |
 | Data, auth, realtime | Supabase: Postgres, anonymous auth, Realtime Broadcast + Presence |
-| Hosting | Cloudflare Workers: static assets plus a small `worker.js` for `/og.png` and the commentator cron |
-| AI | Claude (`claude-opus-5-5`) via `@anthropic-ai/sdk`, used only in the Worker |
+| Hosting | Cloudflare Workers: static assets plus a dependency-free `worker.js` for `/og.png` |
 | Design | Julian Unified UI (TheBooleanJulian design system) |
 
 ## Run your own
@@ -75,9 +72,9 @@ browser (single static page)
    [`migration.sql`](supabase/migration.sql), [`002_game.sql`](supabase/002_game.sql), [`003_extras.sql`](supabase/003_extras.sql), [`seed.sql`](supabase/seed.sql).
 2. Turn on **Authentication → Providers → Allow anonymous sign-ins**.
 3. Put your project URL and **anon/public** key in [`public/config.js`](public/config.js). Never use the service-role key there.
-4. Set `SUPABASE_URL` in [`wrangler.jsonc`](wrangler.jsonc). Put `SUPABASE_SERVICE_ROLE_KEY` and `ANTHROPIC_API_KEY` in `.env`
-   (see [`.env.example`](.env.example)), then upload them as Worker secrets with `python tools/push_secrets.py`.
-5. Run `npm ci`, then `npx wrangler deploy`. Run npm outside Google Drive: clone the repo to a local folder first.
+4. Set `SUPABASE_URL` in [`wrangler.jsonc`](wrangler.jsonc). Put `SUPABASE_SERVICE_ROLE_KEY` in `.env` (see [`.env.example`](.env.example)),
+   then upload it as a Worker secret with `python tools/push_secrets.py`. It is used only to render `/og.png`.
+5. Deploy with `npx wrangler deploy`. There is nothing to install.
 6. Optional, for GitHub saving:
    - Enable **Authentication → Providers → GitHub** (a GitHub OAuth app with callback `https://<ref>.supabase.co/auth/v1/callback`).
    - Turn on **Allow manual linking**.
