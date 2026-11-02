@@ -155,6 +155,7 @@ footer { flex: none; background: var(--surface); border-top: 1px solid var(--lin
   right: 0; top: 0; bottom: 0; width: min(380px, 100vw); padding: calc(16px + env(safe-area-inset-top)) 16px 16px; overflow-y: auto;
   transform: translateX(105%); transition: transform var(--dur-base) var(--ease-out); display: flex; flex-direction: column; gap: 14px;
 }
+#drawer > * { flex-shrink: 0; }  /* the drawer scrolls; children must not squash */
 body.open #drawer { transform: none; }
 body.open #scrim { display: block; }
 #drawer h2 { margin: 6px 0 0; font: 700 12px/1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); }
